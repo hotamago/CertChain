@@ -13,7 +13,7 @@ use anchor_spl::{
 use dot::program::*;
 use std::{cell::RefCell, rc::Rc};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("DrLi2HqpW1KM3mDTV8u2BHC7h5vZcGJPKCnoayZ1Rtrf");
 
 pub mod seahorse_util {
     use super::*;
@@ -163,13 +163,13 @@ pub mod seahorse_util {
 }
 
 #[program]
-mod electra_chain {
+mod compi {
     use super::*;
     use seahorse_util::*;
     use std::collections::HashMap;
 
     #[derive(Accounts)]
-    # [instruction (seed_8 : u64 , data : [u8 ; 808])]
+    # [instruction (seed_8 : u64 , fullname: [u16; 32] , birthday: [u8; 4] , delivery_date: [u8; 4] , serial_id: [u16; 64] , security_code: [u8; 32] , more_info: [u16; 256] , original_data_sha256: [u8; 32] , original_image_sha256: [u8; 32])]
     pub struct InitCertificate<'info> {
         #[account(mut)]
         pub payer: Signer<'info>,
@@ -187,7 +187,14 @@ mod electra_chain {
     pub fn init_certificate(
         ctx: Context<InitCertificate>,
         seed_8: u64,
-        data: [u8 ; 808],
+        fullname: [u16; 32],
+        birthday: [u8; 4],
+        delivery_date: [u8; 4],
+        serial_id: [u16; 64],
+        security_code: [u8; 32],
+        more_info: [u16; 256],
+        original_data_sha256: [u8; 32],
+        original_image_sha256: [u8; 32],
     ) -> Result<()> {
         let mut programs = HashMap::new();
 
@@ -219,7 +226,14 @@ mod electra_chain {
             owner.clone(),
             cert.clone(),
             seed_8,
-            data,
+            fullname,
+            birthday,
+            delivery_date,
+            serial_id,
+            security_code,
+            more_info,
+            original_data_sha256,
+            original_image_sha256,
         );
 
         dot::program::Certificate::store(cert.account);

@@ -1,3 +1,8 @@
+from typing import Optional, Union
+from hotaSolana.bs58 import bs58
+import struct
+import random
+
 class BaseElement:
     def __init__(self, key="", value=""):
         self.key = key
@@ -28,6 +33,15 @@ class BaseStruct:
         self.mapName2Data = dict()
         for item in self.data:
             self.mapName2Data[item.key] = item
+
+    def random(self):
+        for item in self.data:
+            if isinstance(item.value, BaseStruct):
+                item.value.random()
+            elif isinstance(item.value, int):
+                item.value = random.randint(0, 255)
+            else:
+                raise Exception("Error data struct is not number or struct")
 
     def get(self, key):
         if key in self.mapName2Data:
@@ -130,6 +144,10 @@ class HotaArrayInt(BaseStruct):
             else:
                 data.append(BaseElement(i, HotaUint8(defaultData)))
         super().__init__(data)
+    
+    # for len
+    def __len__(self):
+        return len(self.data)
 
 # Uint 16
 
@@ -273,6 +291,29 @@ class HotaUintX(BaseStruct):
 
     def object2struct(self, inUint):
         self.setValue(inUint)
+
+# IntX
+class HotaIntX(BaseStruct):
+    def __init__(self, lenArr, inInt=0):
+        inArray = [
+            (inInt >> i*8) & 0xff for i in range(lenArr)
+        ]
+        super().__init__([BaseElement("value", HotaArrayInt(lenArr, inArray, 0))])
+
+    def value(self):
+        temp_sum = sum([self.get("value").get(i) * (256 ** i) for i in range(len(self.get("value")))])
+        temp_sum -= 256 ** len(self.get("value")) if self.get("value").get(len(self.get("value")) - 1) >= 128 else 0
+        return temp_sum
+    
+    def setValue(self, inInt):
+        for i in range(len(self.get("value"))):
+            self.get("value").set(i, (inInt >> i*8) & 0xff)
+
+    def struct2object(self):
+        return self.value()
+
+    def object2struct(self, inInt):
+        self.setValue(inInt)
 
 # String 64bit data
 class HotaString64(HotaArrayInt):
@@ -433,6 +474,76 @@ class HotaDate(BaseStruct):
         self.get("year").setValue(object["year"])
 
 # HotaPublicKey
-class HotaPublicKey(HotaHex):
-    def __init__(self, inArray=[]):
-        super().__init__(32, inArray)
+class HotaPublicKey(BaseStruct): # Fix length 32 bytes
+    def __init__(self, inStringB58: Optional[Union[str, bytes]] = None):
+        data = []
+        if inStringB58 is not None:
+            if isinstance(inStringB58, str):
+                inStringB58 = bs58.decode(inStringB58)
+
+            if len(inStringB58) != 32:
+                raise Exception("Error public key is not 32 bytes")
+            
+            for i in range(32):
+                data.append(BaseElement(i, HotaUint8(inStringB58[i])))
+        else:
+            for i in range(32):
+                data.append(BaseElement(i, HotaUint8(0)))
+            
+        super().__init__(data)
+
+    def struct2object(self) -> str:
+        # Convert to base58 string
+        return bs58.encode(bytes(self.serialize()))
+    
+    def object2struct(self, inStringB58: Union[str, bytes]) -> None:
+        # Convert from base58 string to bytes
+        if isinstance(inStringB58, str):
+            inStringB58 = bs58.decode(inStringB58)
+        
+        if len(inStringB58) != 32:
+            raise Exception("Error public key is not 32 bytes")
+
+        for i in range(32):
+            self.get(i).setValue(inStringB58[i])
+
+# IEEE 754 float
+# Float 32
+class HotaFloat32(BaseStruct):
+    def __init__(self, inFloat=0.0):
+        inArray = list(struct.pack("!f", inFloat))
+        super().__init__([BaseElement("value", HotaArrayInt(4, inArray, 0))])
+
+    def value(self):
+        return struct.unpack("!f", bytes(self.serialize()))[0]
+    
+    def setValue(self, inFloat):
+        inArray = list(struct.pack("!f", inFloat))
+        for i in range(4):
+            self.get("value").set(i, inArray[i])
+
+    def struct2object(self):
+        return self.value()
+    
+    def object2struct(self, inFloat):
+        self.setValue(inFloat)
+    
+# Float 64
+class HotaFloat64(BaseStruct):
+    def __init__(self, inFloat=0.0):
+        inArray = list(struct.pack("!d", inFloat))
+        super().__init__([BaseElement("value", HotaArrayInt(8, inArray, 0))])
+
+    def value(self):
+        return struct.unpack("!d", bytes(self.serialize()))[0]
+    
+    def setValue(self, inFloat):
+        inArray = list(struct.pack("!d", inFloat))
+        for i in range(8):
+            self.get("value").set(i, inArray[i])
+    
+    def struct2object(self):
+        return self.value()
+    
+    def object2struct(self, inFloat):
+        self.setValue(inFloat)

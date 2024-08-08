@@ -153,3 +153,9 @@ def findProgramAddress(seed: bytes, program_id: PublicKey):
         if not ed25519.isOnCurve(pubkey_seed.byte_value.hex()):
             return pubkey_seed
     return None
+
+def createBytesFromArrayBytes(*array_bytes):
+    bytes_data = bytearray()
+    for byte in array_bytes:
+        bytes_data.extend(byte)
+    return bytes(bytes_data)
